@@ -73,6 +73,7 @@ var ReinforcementLearner = (function() {
      * working variables */
     var canvas, ctx;
     var learner;
+    var learnerArr = [];
 
     /******************
      * work functions */
@@ -95,6 +96,7 @@ var ReinforcementLearner = (function() {
             }
         );
         learner.actUntilExit();
+        learnerArr.push(learner);
     }
 
     function paintAgent(c1, c2) {
@@ -154,9 +156,11 @@ var ReinforcementLearner = (function() {
 
     return {
         init: initReinforcementLearner,
+        w: GRID,
         r: REWARD,
         a: ACTIONS,
-        t: TRANSITION
+        t: TRANSITION,
+        learnerArr: learnerArr
     };
 })();
 
