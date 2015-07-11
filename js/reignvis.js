@@ -12,7 +12,7 @@ var ReinforcementLearner = (function() {
 
     /**********
      * config */
-    var DIMS = [800, 450];
+    var DIMS = [720, 405];
     var GRID = [
         [0, 0, 0, 2],
         [0, 1, 0, 3],
@@ -83,6 +83,11 @@ var ReinforcementLearner = (function() {
         canvas.height = DIMS[1];
         ctx = canvas.getContext('2d');
 
+        //event listeners
+        $s('#run-5-btn').addEventListener('click', function() {
+            learnNTimes(0, 5);
+        });
+
         //reinforcement learning stuff
         learners.push(new Reign(GRID, REWARD, ACTIONS, TRANSITION, [2, 0],
             function(state, action, reward) {
@@ -91,14 +96,18 @@ var ReinforcementLearner = (function() {
                 paintAgent(state[0], state[1]); //draw the agent
             }
         ));
-        learnNTimes(0, 8);
+        learnNTimes(0, 5);
     }
 
     function learnNTimes(idx, n) {
         learners[idx].exitNTimes(n, function each(idx, cumRwd) {
-            console.log('Cumulative reward #'+idx+': '+cumRwd);
+            var str = 'Cumulative reward #'+idx+': '+cumRwd;
+            console.log(str);
+            $s('#rwd-updates').innerHTML = str;
         }, function end(avgCumRwd) {
-            console.log('Average cumulative reward: '+avgCumRwd);
+            var str = 'Average cumulative reward: '+avgCumRwd;
+            console.log(str);
+            $s('#rwd-updates').innerHTML = str;
         });
     }
 

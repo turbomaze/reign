@@ -41,7 +41,7 @@ var Reign = (function() {
         //methods
         this.exitNTimes = function(n, each, end, idx, totalRwd) {
             if (n === 0) {
-                end(totalRwd/(idx+1)); //the average cumulative reward
+                end(totalRwd/idx); //the average cumulative reward
             } else {
                 var self = this;
                 each = each || function() {};
