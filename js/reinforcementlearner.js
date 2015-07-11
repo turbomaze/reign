@@ -18,12 +18,49 @@ var ReinforcementLearner = (function() {
         [0, 1, 0, 3],
         [0, 0, 0, 0]
     ]; //tile types: {0: empty, 1: wall, 2: good exit, 3: bad exit}
-    var REWARDS = [
-        -0.1, //0: living penalty
-        0, //1: can't get here so it doesn't matter
-        1, //2: go here, desirable end state
-        -1 //3: don't go here, bad end state
-    ];
+    var REWARD = function(s_, s, a) {
+        //living reward, unreachable state, good reward, bad reward
+        var rewards = [-0.1, 0, 1, -1];
+        if (s_[0] === false) return rewards[GRID[s[0]][s[1]]]; //they exited
+
+        var tileType_ = GRID[s_[0]][s_[1]]; //landing tile
+        if (tileType_ === 2 || tileType_ === 3) return rewards[0];
+        else return rewards[GRID[s_[0]][s_[1]]]; //only depends on end state
+    }; //reward for going to state s_ from state s with action a
+    var ACTIONS = [0, 1, 2, 3, 4]; //up, right, down, left, exit
+    var TRANSITION = function(s, a) {
+        var tileType = GRID[s[0]][s[1]];
+        if (tileType === 2 || tileType === 3) {
+            if (a === 4) return [[false, false], 1]; //guaranteed to exit
+            else return [s.slice(0), 1]; //same spot otherwise
+        } else {
+            //0 deg shift clockwise, 90, 180, 270
+            var probs = [
+                [0.8, 0.1, 0, 0.1], //up: up, right, down, left
+                [0.1, 0.8, 0.1, 0], //right: up, right, down, left
+                [0, 0.1, 0.8, 0.1], //down: up, right, down, left
+                [0.1, 0, 0.1, 0.8] //left: up, right, down, left
+            ];
+            var trsns = [];
+            if (s[0] > 0 && GRID[s[0]-1][s[1]] !== 1) {
+                if (probs[a][0] > 0) trsns.push([[s[0]-1, s[1]], probs[a][0]]);
+            }
+            if (s[1] < GRID[0].length-1 && GRID[s[0]][s[1]+1] !== 1) {
+                if (probs[a][1] > 0) trsns.push([[s[0], s[1]+1], probs[a][1]]);
+            }
+            if (s[0] < GRID.length-1 && GRID[s[0]+1][s[1]] !== 1) {
+                if (probs[a][2] > 0) trsns.push([[s[0]+1, s[1]], probs[a][2]]);
+            }
+            if (s[1] > 0 && GRID[s[0]][s[1]-1] !== 1) {
+                if (probs[a][3] > 0) trsns.push([[s[0], s[1]-1], probs[a][3]]);
+            }
+            var unusedProb = 1 - trsns.reduce(function(acc, transition) {
+                return acc + transition[1];
+            }, 0);
+            trsns.push([s.slice(0), unusedProb]); //remain in the same state
+            return trsns;
+        }
+    }; //returns probability of entering alternate states
 
     /*************
      * constants */
@@ -45,11 +82,13 @@ var ReinforcementLearner = (function() {
         canvas.height = DIMS[1];
         ctx = canvas.getContext('2d');
 
-        learner = new Reign(GRID, REWARDS, [], [2, 0], function(state) {
-            clearCanvas(); //clean slate
-            paintGrid(); //draw the grid
-            paintAgent(state[0], state[1]); //draw the agent
-        });
+        learner = new Reign(GRID, REWARD, ACTIONS, TRANSITION, [2, 0],
+            function(state) {
+                clearCanvas(); //clean slate
+                paintGrid(); //draw the grid
+                paintAgent(state[0], state[1]); //draw the agent
+            }
+        );
     }
 
     function paintAgent(c1, c2) {
@@ -84,15 +123,17 @@ var ReinforcementLearner = (function() {
 
     /***********
      * objects */
-    function Reign(world, rewards, transitions, initState, every) {
+    function Reign(world, reward, actions, transition, initState, every) {
         //constants
         this.world = world; //the geography of the world
-        this.rewards = rewards; //the values of each state
-        this.transitions = transitions; //the action probabilities
+        this.reward = reward; //the values of each state
+        this.actions = actions; //the actions available
+        this.transition = transition; //the action probabilities
+        this.initState = initState.slice(0); //state to restart in after exit
         this.every = every || function() {}; //run after each action
 
         //working variables
-        this.state = initState.slice(0);
+        this.state = this.initState.slice(0);
 
         //call this for the first time
         this.every(this.state);
@@ -124,7 +165,9 @@ var ReinforcementLearner = (function() {
     }
 
     return {
-        init: initReinforcementLearner
+        init: initReinforcementLearner,
+        r: REWARD,
+        t: TRANSITION
     };
 })();
 
