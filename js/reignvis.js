@@ -27,12 +27,12 @@ var ReinforcementLearner = (function() {
         if (tileType_ === 2 || tileType_ === 3) return rewards[0];
         else return rewards[GRID[s_[0]][s_[1]]]; //only depends on end state
     }; //reward for going to state s_ from state s with action a
-    var ACTIONS = [0, 1, 2, 3, 4]; //up, right, down, left, exit
+    var ACTIONS = [0, 1, 2, 3]; //up, right, down, left
     var TRANSITION = function(s, a) {
         var tileType = GRID[s[0]][s[1]];
         if (tileType === 2 || tileType === 3) {
-            if (a === 4) return [[[false, false], 1]]; //guaranteed to exit
-            else return [[s.slice(0), 1]]; //same spot otherwise
+            //guaranteed to exit regardless of the action
+            return [[[false, false], 1]];
         } else {
             //0 deg shift clockwise, 90, 180, 270
             var probs = [
@@ -72,8 +72,7 @@ var ReinforcementLearner = (function() {
     /*********************
      * working variables */
     var canvas, ctx;
-    var learner;
-    var learnerArr = [];
+    var learners = [];
 
     /******************
      * work functions */
@@ -85,18 +84,22 @@ var ReinforcementLearner = (function() {
         ctx = canvas.getContext('2d');
 
         //reinforcement learning stuff
-        learner = new Reign(GRID, REWARD, ACTIONS, TRANSITION, [2, 0],
+        learners.push(new Reign(GRID, REWARD, ACTIONS, TRANSITION, [2, 0],
             function(state, action, reward) {
                 clearCanvas(); //clean slate
                 paintGrid(); //draw the grid
                 paintAgent(state[0], state[1]); //draw the agent
-
-                console.log(['up','right','down','left','EXIT'][action]);
-                console.log('got '+reward);
             }
-        );
-        learner.actUntilExit();
-        learnerArr.push(learner);
+        ));
+        learnNTimes(0, 8);
+    }
+
+    function learnNTimes(idx, n) {
+        learners[idx].exitNTimes(n, function each(idx, cumRwd) {
+            console.log('Cumulative reward #'+idx+': '+cumRwd);
+        }, function end(avgCumRwd) {
+            console.log('Average cumulative reward: '+avgCumRwd);
+        });
     }
 
     function paintAgent(c1, c2) {
@@ -160,7 +163,8 @@ var ReinforcementLearner = (function() {
         r: REWARD,
         a: ACTIONS,
         t: TRANSITION,
-        learnerArr: learnerArr
+        learners: learners,
+        learnNTimes: learnNTimes
     };
 })();
 

@@ -15,6 +15,8 @@ var Reign = (function() {
 
     /*************
      * constants */
+    var ALPHA = 0.5; //the higher this is, the more important past q's are
+    var GAMMA = 1; //" " past rewards are
 
     /******************
      * work functions */
@@ -37,15 +39,53 @@ var Reign = (function() {
         this.every(this.state);
 
         //methods
-        this.actUntilExit = function() {
-            if (this.state[0] !== false) {
-                var action = this.actions[
-                    Math.floor(this.actions.length*Math.random())
-                ];
-                this.takeAction(action);
+        this.exitNTimes = function(n, each, end, idx, totalRwd) {
+            if (n === 0) {
+                end(totalRwd/(idx+1)); //the average cumulative reward
+            } else {
+                var self = this;
+                each = each || function() {};
+                end = end || function() {};
+                idx = idx || 0;
+                totalRwd = totalRwd || 0;
 
-                setTimeout(this.actUntilExit.bind(this), MS_PER_ACTION);
+                this.actUntilExit(function(cumRwd) {
+                    each.apply(
+                        null,
+                        [idx].concat(Array.prototype.slice.call(arguments, 0))
+                    );
+                    self.exitNTimes(n-1, each, end, idx+1, totalRwd+cumRwd);
+                });
             }
+        };
+        this.actUntilExit = function(cumRwd, callback) {
+            if (arguments.length < 2) { //this is the initial call
+                //prep the callback
+                var callbackFunc = function() {};
+                if (typeof cumRwd === 'function') callbackFunc = cumRwd;
+
+                //prep the state and act
+                this.state = this.initState.slice(0);
+                var rwd = this.act();
+                setTimeout(
+                    this.actUntilExit.bind(this, rwd, callbackFunc),
+                    MS_PER_ACTION
+                );
+            } else { //not the initial call
+                if (this.state[0] === false) { //ended yay
+                    callback(cumRwd);
+                } else { //intermediary call; act
+                    var rwd = this.act();
+                    setTimeout(
+                        this.actUntilExit.bind(this, cumRwd+rwd, callback),
+                        MS_PER_ACTION
+                    );
+                }
+            }
+        };
+        this.act = function() {
+            var action = this.chooseAction(this.state)[0];
+            return this.takeAction(action); //the reward
         };
         this.takeAction = function(a) {
             //save the current state
@@ -56,10 +96,29 @@ var Reign = (function() {
             this.state = this.chooseRandomly(possibleEndStates);
             //get the reward for this transition
             var reward = this.reward(this.state, prevState, a);
+            //update the state-action pair's q value
+            var qOld = this.q(prevState, a);
+            var nextQMax = this.chooseAction(this.state)[1];
+            var qNew = (1-ALPHA)*qOld + ALPHA*(reward + GAMMA*nextQMax);
+            this.q(prevState, a, qNew);
             //call the every function
             this.every(this.state, a, reward);
 
             return reward;
+        };
+        this.chooseAction = function(state) {
+            //choose the action the maximizes the q value
+            var self = this;
+            var bestAction = this.actions.map(function(action) {
+                return self.q(state, action); //array of q values
+            }).reduce(function(ret, qOption, idx) {
+                if (ret === false || qOption > ret[1]) {
+                    return [self.actions[idx], qOption]; //this q is better
+                } else {
+                    return ret; //old one was fine
+                }
+            }, false);
+            return bestAction;
         };
         this.chooseRandomly = function(set) {
             //given a set of object-weight pairs, choose a random object
