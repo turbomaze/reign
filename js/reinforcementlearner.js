@@ -142,6 +142,27 @@ var ReinforcementLearner = (function() {
         this.takeAction = function(a) {
             this.every(state);
         };
+        this.chooseRandomly = function(set) {
+            //given a set of object-weight pairs, choose a random object
+            //according to its corresponding weight (which is its probabilty if
+            //the weights are normalized)
+            var sum = set.reduce(function(a, b) {
+                return a + b[1];
+            }, 0);
+            var idxs = [];
+            for (var ai = 0; ai < set.length; ai++) {
+                var val = ai > 0 ? idxs[ai-1][1] : 0;
+                val += set[ai][1]/sum;
+                idxs.push([ai, val]);
+            }
+            var chooser = Math.random();
+            for (var ai = 0; ai < idxs.length; ai++) {
+                if (chooser < idxs[ai][1]) {
+                    return set[idxs[ai][0]][0]; //the first one it's less than
+                }
+            }
+            return set[0][0]; //unexpected error; return first one
+        }
     }
 
     /********************
