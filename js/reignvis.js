@@ -85,10 +85,13 @@ var ReinforcementLearner = (function() {
 
         //reinforcement learning stuff
         learner = new Reign(GRID, REWARD, ACTIONS, TRANSITION, [2, 0],
-            function(state) {
+            function(state, action, reward) {
                 clearCanvas(); //clean slate
                 paintGrid(); //draw the grid
                 paintAgent(state[0], state[1]); //draw the agent
+
+                console.log(['up','right','down','left','EXIT'][action]);
+                console.log('got '+reward);
             }
         );
         learner.actUntilExit();
@@ -128,62 +131,6 @@ var ReinforcementLearner = (function() {
 
     /***********
      * objects */
-    function Reign(world, reward, actions, transition, initState, every) {
-        //constants
-        this.world = world.slice(0); //the geography of the world
-        this.reward = reward; //the values of each state
-        this.actions = actions.slice(0); //the actions available
-        this.transition = transition; //the action probabilities
-        this.initState = initState.slice(0); //state to restart in after exit
-        this.every = every || function() {}; //run after each action
-
-        //working variables
-        this.state = this.initState.slice(0);
-
-        //call this for the first time
-        this.every(this.state);
-
-        //methods
-        this.actUntilExit = function() {
-            if (this.state[0] !== false) {
-                var action = this.actions[
-                    Math.floor(this.actions.length*Math.random())
-                ];
-                console.log(['up','right','down','left','EXIT'][action]);
-                this.takeAction(action);
-
-                setTimeout(this.actUntilExit.bind(this), 500);
-            }
-        };
-        this.takeAction = function(a) {
-            var possibleEndStates = this.transition(this.state, a);
-            var result = this.chooseRandomly(possibleEndStates);
-            this.state = result.slice(0);
-
-            this.every(this.state);
-        };
-        this.chooseRandomly = function(set) {
-            //given a set of object-weight pairs, choose a random object
-            //according to its corresponding weight (which is its probabilty if
-            //the weights are normalized)
-            var sum = set.reduce(function(a, b) {
-                return a + b[1];
-            }, 0);
-            var idxs = [];
-            for (var ai = 0; ai < set.length; ai++) {
-                var val = ai > 0 ? idxs[ai-1][1] : 0;
-                val += set[ai][1]/sum;
-                idxs.push([ai, val]);
-            }
-            var chooser = Math.random();
-            for (var ai = 0; ai < idxs.length; ai++) {
-                if (chooser < idxs[ai][1]) {
-                    return set[idxs[ai][0]][0]; //the first one it's less than
-                }
-            }
-            return set[0][0]; //unexpected error; return first one
-        };
-    }
 
     /********************
      * helper functions */
@@ -208,6 +155,7 @@ var ReinforcementLearner = (function() {
     return {
         init: initReinforcementLearner,
         r: REWARD,
+        a: ACTIONS,
         t: TRANSITION
     };
 })();
