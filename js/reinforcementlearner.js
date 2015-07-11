@@ -18,6 +18,12 @@ var ReinforcementLearner = (function() {
         [0, 1, 0, 3],
         [0, 0, 0, 0]
     ]; //tile types: {0: empty, 1: wall, 2: good exit, 3: bad exit}
+    var REWARDS = [
+        -0.1, //0: living penalty
+        0, //1: can't get here so it doesn't matter
+        1, //2: go here, desirable end state
+        -1 //3: don't go here, bad end state
+    ];
 
     /*************
      * constants */
@@ -40,6 +46,16 @@ var ReinforcementLearner = (function() {
 
         //draw the grid
         paintGrid();
+
+        //draw the agent
+        paintAgent(2, 0);
+    }
+
+    function paintAgent(c1, c2) {
+        var yOff = (c1 + 0.5)*TILE_HT;
+        var xOff = (c2 + 0.5)*TILE_WD;
+        drawPoint([xOff, yOff], Math.min(TILE_WD, TILE_HT)/5, TILE_COLS[1]);
+        drawPoint([xOff, yOff], Math.min(TILE_WD, TILE_HT)/9, TILE_COLS[0]);
     }
 
     function paintGrid() {
@@ -70,6 +86,14 @@ var ReinforcementLearner = (function() {
 
     /********************
      * helper functions */
+    function drawPoint(pos, r, color) {
+        ctx.fillStyle = color || 'rgba(255, 0, 0, 0.3)';
+        ctx.beginPath();
+        ctx.arc(pos[0], pos[1], r, 0, 2*Math.PI, true);
+        ctx.closePath();
+        ctx.fill();
+    }
+
     function clearCanvas(color) {
         ctx.fillStyle = color || 'white';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
