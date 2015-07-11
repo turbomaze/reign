@@ -2,7 +2,7 @@
 |   Reinforcement  |
 |      Learner     |
 | @author Anthony  |
-| @version 0.1     |
+| @version 0.2     |
 | @date 2015/07/11 |
 | @edit 2015/07/11 |
 \******************/
