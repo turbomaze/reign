@@ -39,49 +39,85 @@ var Reign = (function() {
         this.every(this.state);
 
         //methods
-        this.exitNTimes = function(n, each, end, idx, totalRwd) {
+        this.exitNTimes = function(n, msPerAction, each, end, idx, totalRwd) {
             if (n === 0) {
                 end(totalRwd/idx); //the average cumulative reward
             } else {
-                var self = this;
-                each = each || function() {};
-                end = end || function() {};
+                //take care of the argument possibilities
+                switch (arguments.length) {
+                    case 1:
+                        msPerAction = MS_PER_ACTION;
+                        each = each || function() {};
+                        end = end || function() {};
+                        break;
+                    case 2:
+                        if (typeof msPerAction === 'number') {
+                            each = each || function() {};
+                            end = end || function() {};
+                        } else {
+                            each = msPerAction;
+                            msPerAction = MS_PER_ACTION;
+                        }
+                        break;
+                    case 3:
+                        if (typeof msPerAction === 'number') {
+                            end = end || function() {};
+                        } else {
+                            end = each;
+                            each = msPerAction;
+                            msPerAction = MS_PER_ACTION;
+                        }
+                        break;
+                }
                 idx = idx || 0;
                 totalRwd = totalRwd || 0;
 
-                this.actUntilExit(function(cumRwd) {
+                //whew! act until exit and async recurse
+                var self = this;
+                this.actUntilExit(msPerAction, function(cumRwd) {
                     each.apply(
                         null,
                         [idx].concat(Array.prototype.slice.call(arguments, 0))
                     );
-                    self.exitNTimes(n-1, each, end, idx+1, totalRwd+cumRwd);
+                    self.exitNTimes(
+                        n-1, msPerAction, each, end, idx+1, totalRwd+cumRwd
+                    );
                 });
             }
         };
-        this.actUntilExit = function(cumRwd, callback) {
-            if (arguments.length < 2) { //this is the initial call
-                //prep the callback
-                var callbackFunc = function() {};
-                if (typeof cumRwd === 'function') callbackFunc = cumRwd;
-
-                //prep the state and act
-                this.state = this.initState.slice(0);
-                var rwd = this.act();
-                setTimeout(
-                    this.actUntilExit.bind(this, rwd, callbackFunc),
-                    MS_PER_ACTION
-                );
-            } else { //not the initial call
-                if (this.state[0] === false) { //ended yay
-                    callback(cumRwd);
-                } else { //intermediary call; act
-                    var rwd = this.act();
-                    setTimeout(
-                        this.actUntilExit.bind(this, cumRwd+rwd, callback),
-                        MS_PER_ACTION
-                    );
+        this.actUntilExit = function(msPerAction, cumRwd, callback) {
+            //this is the initial call
+            if (arguments.length < 3) {
+                //prep the arguments urgh
+                if (typeof msPerAction === 'function') {
+                    callback = msPerAction;
+                    msPerAction = MS_PER_ACTION;
+                } else {
+                    switch(arguments.length) {
+                        case 1:
+                            callback = function() {};
+                            break;
+                        case 2:
+                            callback = cumRwd;
+                            break;
+                    }
                 }
+                cumRwd = 0;
+
+                //prep the state
+                this.state = this.initState.slice(0);
+            } else if (this.state[0] === false) { //ended yay
+                return callback(cumRwd);
             }
+
+            //if you made it here, you're either starting or continuing
+            var rwd = this.act();
+            setTimeout(
+                this.actUntilExit.bind(
+                    this, msPerAction, cumRwd+rwd, callback
+                ),
+                msPerAction
+            );
         };
         this.act = function() {
             var action = this.chooseAction(this.state)[0];

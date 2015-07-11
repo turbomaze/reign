@@ -87,6 +87,9 @@ var ReinforcementLearner = (function() {
         $s('#run-5-btn').addEventListener('click', function() {
             learnNTimes(0, 5);
         });
+        $s('#run-50-btn').addEventListener('click', function() {
+            learnNTimes(0, 50, 30);
+        });
 
         //reinforcement learning stuff
         learners.push(new Reign(GRID, REWARD, ACTIONS, TRANSITION, [2, 0],
@@ -99,16 +102,23 @@ var ReinforcementLearner = (function() {
         learnNTimes(0, 5);
     }
 
-    function learnNTimes(idx, n) {
-        learners[idx].exitNTimes(n, function each(idx, cumRwd) {
-            var str = 'Cumulative reward #'+idx+': '+cumRwd;
+    function learnNTimes(lIdx, n, msPerAction) {
+        function each(idx, cumRwd) {
+            var str = 'Cumulative reward #'+idx+': '+round(cumRwd, 3);
             console.log(str);
             $s('#rwd-updates').innerHTML = str;
-        }, function end(avgCumRwd) {
-            var str = 'Average cumulative reward: '+avgCumRwd;
+        }
+        function end(avgCumRwd) {
+            var str = 'Average cumulative reward: '+round(avgCumRwd, 3);
             console.log(str);
             $s('#rwd-updates').innerHTML = str;
-        });
+        }
+
+        if (arguments.length === 2) {
+            learners[lIdx].exitNTimes(n, each, end);
+        } else {
+            learners[lIdx].exitNTimes(n, msPerAction, each, end);
+        }
     }
 
     function paintAgent(c1, c2) {
@@ -164,6 +174,11 @@ var ReinforcementLearner = (function() {
     function $s(id) { //for convenience
         if (id.charAt(0) !== '#') return false;
         return document.getElementById(id.substring(1));
+    }
+
+    function round(n, places) {
+        var mult = Math.pow(10, places);
+        return Math.round(mult*n)/mult;
     }
 
     return {
