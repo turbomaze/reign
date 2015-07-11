@@ -34,6 +34,7 @@ var ReinforcementLearner = (function() {
     /*********************
      * working variables */
     var canvas, ctx;
+    var learner;
 
     /******************
      * work functions */
@@ -44,11 +45,11 @@ var ReinforcementLearner = (function() {
         canvas.height = DIMS[1];
         ctx = canvas.getContext('2d');
 
-        //draw the grid
-        paintGrid();
-
-        //draw the agent
-        paintAgent(2, 0);
+        learner = new Reign(GRID, REWARDS, [], [2, 0], function(state) {
+            clearCanvas(); //clean slate
+            paintGrid(); //draw the grid
+            paintAgent(state[0], state[1]); //draw the agent
+        });
     }
 
     function paintAgent(c1, c2) {
@@ -83,6 +84,24 @@ var ReinforcementLearner = (function() {
 
     /***********
      * objects */
+    function Reign(world, rewards, transitions, initState, every) {
+        //constants
+        this.world = world; //the geography of the world
+        this.rewards = rewards; //the values of each state
+        this.transitions = transitions; //the action probabilities
+        this.every = every || function() {}; //run after each action
+
+        //working variables
+        this.state = initState.slice(0);
+
+        //call this for the first time
+        this.every(this.state);
+
+        //methods
+        this.takeAction = function(a) {
+            this.every(state);
+        };
+    }
 
     /********************
      * helper functions */
