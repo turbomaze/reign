@@ -14,3 +14,7 @@ a.btn:hover {
 a.btn:active {
     background-color: #24960E;
 }
+
+.world-vis {
+    margin-bottom: 2em;
+}

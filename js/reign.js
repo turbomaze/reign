@@ -20,13 +20,12 @@ var Reign = (function() {
 
     /******************
      * work functions */
-    return function(world, reward, actions, transition, initState, every) {
+    return function(initState, actions, transition, reward, every) {
         //constants
-        this.world = world.slice(0); //the geography of the world
-        this.reward = reward; //the values of each state
+        this.initState = initState.slice(0); //state to restart in after exit
         this.actions = actions.slice(0); //the actions available
         this.transition = transition; //the action probabilities
-        this.initState = initState.slice(0); //state to restart in after exit
+        this.reward = reward; //the values of each state
         this.every = every || function() {}; //run after each action
 
         //working variables
@@ -246,8 +245,5 @@ var Reign = (function() {
                 return -(0+1); //not in the array
             }
         }
-
-        //call this for the first time
-        this.every(this.state, null, null, this.q);
     }
 })();
