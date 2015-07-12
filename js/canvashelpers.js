@@ -1,4 +1,5 @@
-//Canvas bRUSH - tools for drawing to html5 canvases
+//Canvas bRUSH - tools for drawing to HTML5 canvases
+//@author Anthony -- https://igliu.com
 var Crush = (function() {
     return {
         clear: function(ctx) {
