@@ -2,8 +2,8 @@
 //@author Anthony -- https://igliu.com
 var Crush = (function() {
     return {
-        clear: function(ctx) {
-            ctx.fillStyle = 'white';
+        clear: function(ctx, color) {
+            ctx.fillStyle = color || 'white';
             ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         },
         getColorStr: function(cols, opacity) {
