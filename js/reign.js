@@ -15,8 +15,10 @@ var Reign = (function() {
 
     /*************
      * constants */
-    var ALPHA = 0.5; //the higher this is, the more important past q's are
-    var GAMMA = 1; //" " past rewards are
+    var ALPHA = 0.1; //the higher this is, the more important new q's are
+    var GAMMA = 1; //" " future rewards are
+    var INIT_EPS = 0.5; //chance of choosing a random action initially
+    var EPS_DECAY = 0.997; //how quickly epsilon decays
 
     /******************
      * work functions */
@@ -30,6 +32,8 @@ var Reign = (function() {
 
         //working variables
         this.state = this.initState.slice(0);
+        this.t = 0;
+        this.eps = INIT_EPS;
 
         //private variables
         var qVals = {}; //never actually accessed directly
@@ -133,6 +137,10 @@ var Reign = (function() {
             var nextQMax = this.chooseAction(this.state)[1];
             var qNew = (1-ALPHA)*qOld + ALPHA*(reward + GAMMA*nextQMax);
             this.q(prevState, a, qNew);
+            //update epsilon
+            this.eps *= EPS_DECAY;
+            //increment the time
+            this.t += 1;
             //call the every function
             this.every(this.state, a, reward, this.q);
 
@@ -141,16 +149,29 @@ var Reign = (function() {
         this.chooseAction = function(state) {
             //choose the action the maximizes the q value
             var self = this;
-            var bestAction = this.actions.map(function(action) {
-                return self.q(state, action); //array of q values
-            }).reduce(function(ret, qOption, idx) {
-                if (ret === false || qOption > ret[1]) {
-                    return [self.actions[idx], qOption]; //this q is better
-                } else {
-                    return ret; //old one was fine
-                }
-            }, false);
-            return bestAction;
+            if (Math.random() < this.eps) {
+                var randIdx = Math.floor(this.actions.length*Math.random());
+                var randAction = this.actions[randIdx];
+                return [randAction, this.q(state, randAction)];
+            } else {
+                var actionQVals = this.actions.map(function(action) {
+                    //array of this state's action-q-value pairs
+                    return [action, self.q(state, action)];
+                });
+                var bestPair = actionQVals.reduce(function(ret, option) {
+                    //return the pair with the highest q-value
+                    if (ret === false || option[1] > ret[1]) {
+                        return option; //this pair's q is better
+                    } else {
+                        return ret; //old one was fine
+                    }
+                }, false);
+                var bestActions = actionQVals.filter(function(pair) {
+                    return pair[1] === bestPair[1];
+                });
+                var randIdx = Math.floor(bestActions.length*Math.random());
+                return bestActions[randIdx];
+            }
         };
         this.chooseRandomly = function(set) {
             //given a set of object-weight pairs, choose a random object

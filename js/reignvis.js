@@ -260,7 +260,8 @@ var ReinforcementLearner = (function() {
                     var xOff = bi*self.TILE_WD;
                     self.ctx.fillStyle = self.TILE_COLS[self.grid[ai][bi]];
                     self.ctx.fillRect(xOff, yOff, self.TILE_WD, self.TILE_HT);
-                    drawQs([ai, bi]);
+                    var tileType = self.grid[ai][bi];
+                    if (tileType === 0) drawQs([ai, bi]);
                 }
             }
 
