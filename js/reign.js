@@ -35,9 +35,6 @@ var Reign = (function() {
         //private variables
         var qVals = {}; //never actually accessed directly
 
-        //call this for the first time
-        this.every(this.state);
-
         //methods
         this.exitNTimes = function(n, msPerAction, each, end, idx, totalRwd) {
             if (n === 0) {
@@ -138,7 +135,7 @@ var Reign = (function() {
             var qNew = (1-ALPHA)*qOld + ALPHA*(reward + GAMMA*nextQMax);
             this.q(prevState, a, qNew);
             //call the every function
-            this.every(this.state, a, reward);
+            this.every(this.state, a, reward, this.q);
 
             return reward;
         };
@@ -249,5 +246,8 @@ var Reign = (function() {
                 return -(0+1); //not in the array
             }
         }
+
+        //call this for the first time
+        this.every(this.state, null, null, this.q);
     }
 })();

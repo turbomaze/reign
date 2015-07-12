@@ -18,6 +18,18 @@ var ReinforcementLearner = (function() {
         [0, 1, 0, 3],
         [0, 0, 0, 0]
     ]; //tile types: {0: empty, 1: wall, 2: good exit, 3: bad exit}
+    var INIT_STATE = [2, 0];
+    if (false) { //more complex world
+        GRID = [
+            [0, 0, 0, 0, 1, 2, 3, 3],
+            [0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 1, 0, 0, 1, 0, 0, 0],
+            [0, 1, 3, 0, 0, 0, 0, 2],
+            [0, 3, 0, 0, 0, 0, 0, 1],
+            [0, 2, 0, 0, 0, 0, 0, 0]
+        ];
+        INIT_STATE = [0, 3];
+    }
     var REWARD = function(s_, s, a) {
         //living reward, unreachable state, good reward, bad reward
         var rewards = [-0.1, 0, 1, -1];
@@ -92,10 +104,10 @@ var ReinforcementLearner = (function() {
         });
 
         //reinforcement learning stuff
-        learners.push(new Reign(GRID, REWARD, ACTIONS, TRANSITION, [2, 0],
-            function(state, action, reward) {
+        learners.push(new Reign(GRID, REWARD, ACTIONS, TRANSITION, INIT_STATE,
+            function(state, action, reward, q) {
                 clearCanvas(); //clean slate
-                paintGrid(); //draw the grid
+                paintGrid(q); //draw the grid
                 paintAgent(state[0], state[1]); //draw the agent
             }
         ));
@@ -130,7 +142,45 @@ var ReinforcementLearner = (function() {
         drawPoint([xOff, yOff], Math.min(TILE_WD, TILE_HT)/9, TILE_COLS[0]);
     }
 
-    function paintGrid() {
+    function paintGrid(q) {
+        function drawQs(state) {
+            //prepare the relevant points
+            var center = [
+                (state[1]+0.5)*TILE_WD,
+                (state[0]+0.5)*TILE_HT
+            ];
+            var corners = [
+                [center[0]-0.5*TILE_WD, center[1]-0.5*TILE_HT],
+                [center[0]+0.5*TILE_WD, center[1]-0.5*TILE_HT],
+                [center[0]+0.5*TILE_WD, center[1]+0.5*TILE_HT],
+                [center[0]-0.5*TILE_WD, center[1]+0.5*TILE_HT]
+            ];
+
+            //colors
+            var highColor = [131, 227, 120];
+            var neutralColor = [239, 239, 239];
+            var lowColor = [237, 124, 111];
+
+            //draw the quadrants
+            ACTIONS.map(function(a, idx) {
+                var qVal = q(state, a);
+                var qColor = getColorStr(neutralColor, 0);
+                if (qVal !== 0) {
+                    qColor = getColorStr(
+                        getGradient(
+                            qVal > 0 ? highColor : lowColor,
+                            neutralColor,
+                            lerp(Math.abs(qVal), [0, 1], [0, 1])
+                        ), 1
+                    );
+                }
+                drawTriangle(
+                    [center, corners[idx], corners[(idx+1)%4]],
+                    qColor
+                );
+            });
+        }
+
         //color cells
         for (var ai = 0; ai < GRID.length; ai++) {
             var yOff = ai*TILE_HT;
@@ -138,6 +188,7 @@ var ReinforcementLearner = (function() {
                 var xOff = bi*TILE_WD;
                 ctx.fillStyle = TILE_COLS[GRID[ai][bi]];
                 ctx.fillRect(xOff, yOff, TILE_WD, TILE_HT);
+                drawQs([ai, bi]);
             }
         }
 
@@ -158,6 +209,37 @@ var ReinforcementLearner = (function() {
 
     /********************
      * helper functions */
+    function getColorStr(cols, opacity) {
+        var mid = '('+cols[0]+','+cols[1]+','+cols[2];
+        if (arguments.length === 2) {
+            return 'rgba'+mid+','+opacity+')';
+        } else {
+            return 'rgb'+mid+')';
+        }
+    }
+
+    function getGradient(c1, c2, percent) {
+        var ret = [0, 0, 0];
+
+        for (var ai = 0; ai < 3; ai++) {
+            ret[ai] = Math.floor(Math.sqrt(
+                percent*c1[ai]*c1[ai] +
+                (1 - percent)*c2[ai]*c2[ai]
+            ))%256;
+        }
+
+        return ret;
+    }
+
+    function drawTriangle(pts, color) {
+        var triangle = new Path2D();
+        triangle.moveTo.apply(triangle, pts[0]);
+        triangle.lineTo.apply(triangle, pts[1]);
+        triangle.lineTo.apply(triangle, pts[2]);
+        ctx.fillStyle = color || 'rgba(0, 0, 255, 0.3)';
+        ctx.fill(triangle);
+    }
+
     function drawPoint(pos, r, color) {
         ctx.fillStyle = color || 'rgba(255, 0, 0, 0.3)';
         ctx.beginPath();
@@ -179,6 +261,11 @@ var ReinforcementLearner = (function() {
     function round(n, places) {
         var mult = Math.pow(10, places);
         return Math.round(mult*n)/mult;
+    }
+
+    function lerp(n, r, o) {
+        var k = (n-r[0])/(r[1]-r[0]);
+        return o[0]+(o[1]-o[0])*k;
     }
 
     return {
