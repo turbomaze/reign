@@ -13,6 +13,7 @@ var ReinforcementLearner = (function() {
     /**********
      * config */
     var DIMS = [720, 405];
+    var LOG_TO_CONSOLE = false;
 
     /*************
      * constants */
@@ -26,14 +27,13 @@ var ReinforcementLearner = (function() {
      * work functions */
     function initReinforcementLearner() {
         //canvas stuff
-        var canvas0 = $s('#canvas0');
-        canvas0.width = DIMS[0];
-        canvas0.height = DIMS[1];
-        var ctx0 = canvas0.getContext('2d');
-        var canvas1 = $s('#canvas1');
-        canvas1.width = DIMS[0];
-        canvas1.height = DIMS[1];
-        var ctx1 = canvas1.getContext('2d');
+        var canvases = [], ctxs = [];
+        for (var ai = 0; ai < 2; ai++) {
+            canvases.push($s('#canvas'+ai));
+            canvases[ai].width = DIMS[0];
+            canvases[ai].height = DIMS[1];
+            ctxs.push(canvases[ai].getContext('2d'));
+        }
 
         //event listeners
         $s('#run-0-5-btn').addEventListener('click', function() {
@@ -45,8 +45,8 @@ var ReinforcementLearner = (function() {
         $s('#run-1-5-btn').addEventListener('click', function() {
             learnNTimes(1, 5);
         });
-        $s('#run-1-50-btn').addEventListener('click', function() {
-            learnNTimes(1, 50, 30);
+        $s('#run-1-100-btn').addEventListener('click', function() {
+            learnNTimes(1, 100, 19);
         });
 
         //reinforcement learning stuff
@@ -59,7 +59,7 @@ var ReinforcementLearner = (function() {
                 -0.1, 0, 1, -1 //rewards
             ], [
                 0.8, 0.1, 0, 0.1 //move probabilities
-            ], ctx0
+            ], ctxs[0]
         ));
         learners.push(
             new Reign(
@@ -78,7 +78,7 @@ var ReinforcementLearner = (function() {
                 -0.1, 0, 1, -1 //rewards
             ], [
                 0.8, 0.1, 0, 0.1 //move probabilities
-            ], ctx1
+            ], ctxs[1]
         ));
         learners.push(
             new Reign(
@@ -96,12 +96,12 @@ var ReinforcementLearner = (function() {
     function learnNTimes(lIdx, n, msPerAction) {
         function each(idx, cumRwd) {
             var str = 'Cumulative reward #'+idx+': '+round(cumRwd, 3);
-            console.log(str);
+            if (LOG_TO_CONSOLE) console.log(str);
             $s('#rwd-'+lIdx+'-updates').innerHTML = str;
         }
         function end(avgCumRwd) {
             var str = 'Average cumulative reward: '+round(avgCumRwd, 3);
-            console.log(str);
+            if (LOG_TO_CONSOLE) console.log(str);
             $s('#rwd-'+lIdx+'-updates').innerHTML = str;
         }
 
@@ -149,13 +149,13 @@ var ReinforcementLearner = (function() {
             } else { //only depends on end state
                 return rewards[self.grid[s_[0]][s_[1]]];
             }
-        }
+        };
         this.actions = [0, 1, 2, 3]; //up, left, down, right
         this.transition = function(s, a) {
             var tileType = self.grid[s[0]][s[1]];
             if (tileType === 2 || tileType === 3) {
                 //guaranteed to exit regardless of the action
-                return [[[false, false], 1]];
+                return [false, false];
             } else {
                 var trsns = [];
                 if (s[0] > 0 && self.grid[s[0]-1][s[1]] !== 1) {
@@ -177,11 +177,14 @@ var ReinforcementLearner = (function() {
                     if (prob > 0) trsns.push([[s[0], s[1]-1], prob]);
                 }
 
+                //any yet assigned probability leads to the same state
                 var unusedProb = 1 - trsns.reduce(function(acc, transition) {
                     return acc + transition[1];
                 }, 0);
                 trsns.push([s.slice(0), unusedProb]); //remain in the same state
-                return trsns;
+
+                //return a random selection
+                return self.chooseRandomly(trsns);
             }
         };
 
@@ -278,6 +281,27 @@ var ReinforcementLearner = (function() {
         };
 
         //helpers
+        this.chooseRandomly = function(set) {
+            //given a set of object-weight pairs, choose a random object
+            //according to its corresponding weight (which is its probabilty if
+            //the weights are normalized)
+            var sum = set.reduce(function(a, b) {
+                return a + b[1];
+            }, 0);
+            var idxs = [];
+            for (var ai = 0; ai < set.length; ai++) {
+                var val = ai > 0 ? idxs[ai-1][1] : 0;
+                val += set[ai][1]/sum;
+                idxs.push([ai, val]);
+            }
+            var chooser = Math.random();
+            for (var ai = 0; ai < idxs.length; ai++) {
+                if (chooser < idxs[ai][1]) {
+                    return set[idxs[ai][0]][0]; //the first one it's less than
+                }
+            }
+            return set[0][0]; //unexpected error; return first one
+        };
         this.lerp = function(n, r, o) {
             var k = (n-r[0])/(r[1]-r[0]);
             return o[0]+(o[1]-o[0])*k;

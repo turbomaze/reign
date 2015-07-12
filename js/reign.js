@@ -26,8 +26,8 @@ var Reign = (function() {
         //constants
         this.initState = initState.slice(0); //state to restart in after exit
         this.actions = actions.slice(0); //the actions available
-        this.transition = transition; //the action probabilities
-        this.reward = reward; //the values of each state
+        this.transition = transition; //given (s,a), returns the next state
+        this.reward = reward; //given (s_,s,a)
         this.every = every || function() {}; //run after each action
 
         //working variables
@@ -126,10 +126,8 @@ var Reign = (function() {
         this.takeAction = function(a) {
             //save the current state
             var prevState = this.state.slice(0);
-            //see where you could end up
-            var possibleEndStates = this.transition(this.state, a);
-            //simulate stochasticity and choose one of thoes possibilities
-            this.state = this.chooseRandomly(possibleEndStates);
+            //see where you end up
+            this.state = this.transition(this.state, a);
             //get the reward for this transition
             var reward = this.reward(this.state, prevState, a);
             //update the state-action pair's q value
@@ -172,27 +170,6 @@ var Reign = (function() {
                 var randIdx = Math.floor(bestActions.length*Math.random());
                 return bestActions[randIdx];
             }
-        };
-        this.chooseRandomly = function(set) {
-            //given a set of object-weight pairs, choose a random object
-            //according to its corresponding weight (which is its probabilty if
-            //the weights are normalized)
-            var sum = set.reduce(function(a, b) {
-                return a + b[1];
-            }, 0);
-            var idxs = [];
-            for (var ai = 0; ai < set.length; ai++) {
-                var val = ai > 0 ? idxs[ai-1][1] : 0;
-                val += set[ai][1]/sum;
-                idxs.push([ai, val]);
-            }
-            var chooser = Math.random();
-            for (var ai = 0; ai < idxs.length; ai++) {
-                if (chooser < idxs[ai][1]) {
-                    return set[idxs[ai][0]][0]; //the first one it's less than
-                }
-            }
-            return set[0][0]; //unexpected error; return first one
         };
         this.q = function(state, action, val) { //makes the syntax easier
             if (arguments.length === 3) {
