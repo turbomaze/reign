@@ -8,6 +8,7 @@
         <link rel="stylesheet" type="text/css" href="css/style.css">
 
         <script src="js/reign.js"></script>
+        <script src="js/canvashelpers.js"></script>
         <script src="js/reignvis.js"></script>
     </head>
     <body>
@@ -16,8 +17,41 @@
                 <div class="unit span-grid">
                     <h2>Reinforcement Learner</h2>
                 </div>
-                <div id="canvas-container" class="unit span-grid">
-                    <canvas id="canvas"></canvas>
+
+                <hr>
+
+                <div class="world-vis">
+                    <div class="unit span-grid">
+                        <h3>Simple GridWorld</h3>
+                    </div>
+                    <div id="canvas0-container" class="unit span-grid">
+                        <canvas id="canvas0"></canvas>
+                    </div>
+                    <a class="btn unit one-of-four" id="run-0-5-btn">
+                        Run 5 times
+                    </a>
+                    <a class="btn unit one-of-four" id="run-0-50-btn">
+                        Run 50 times
+                    </a>
+                    <span class="unit two-of-four" id="rwd-0-updates"></span>
+                </div>
+
+                <hr>
+
+                <div class="world-vis">
+                    <div class="unit span-grid">
+                        <h3>Complex GridWorld</h3>
+                    </div>
+                    <div id="canvas1-container" class="unit span-grid">
+                        <canvas id="canvas1"></canvas>
+                    </div>
+                    <a class="btn unit one-of-four" id="run-1-5-btn">
+                        Run 5 times
+                    </a>
+                    <a class="btn unit one-of-four" id="run-1-50-btn">
+                        Run 50 times
+                    </a>
+                    <span class="unit two-of-four" id="rwd-1-updates"></span>
                 </div>
             </div>
         </div>

@@ -1,1 +1,20 @@
 /* main stylesheet */
+a.btn {
+    padding: 4px;
+    border-radius: 4px;
+    background-color: #3BB023;
+    color: white;
+    text-decoration: none;
+    text-align: center;
+    cursor: pointer
+}
+a.btn:hover {
+    background-color: #34A61E;
+}
+a.btn:active {
+    background-color: #24960E;
+}
+
+.world-vis {
+    margin-bottom: 2em;
+}
