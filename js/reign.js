@@ -15,7 +15,7 @@ var Reign = (function() {
 
     /*************
      * constants */
-    var ALPHA = 0.1; //the higher this is, the more important new q's are
+    var ALPHA = 0.5; //the higher this is, the more important new q's are
     var GAMMA = 1; //" " future rewards are
     var INIT_EPS = 0.5; //chance of choosing a random action initially
     var EPS_DECAY = 0.997; //how quickly epsilon decays

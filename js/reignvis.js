@@ -12,7 +12,7 @@ var ReinforcementLearner = (function() {
 
     /**********
      * config */
-    var NUM_EX = 3;
+    var NUM_EX = 4;
     var DIMS = [720, 405];
     var LOG_TO_CONSOLE = false;
 
@@ -60,7 +60,7 @@ var ReinforcementLearner = (function() {
                 -0.1, 0, 1, -1 //rewards
             ], [
                 0.8, 0.1, 0, 0.1 //move probabilities
-            ], ctxs[0]
+            ], ctxs[worlds.length]
         ));
         learners.push(
             new Reign(
@@ -79,12 +79,42 @@ var ReinforcementLearner = (function() {
                 -0.1, 0, 1, -1 //rewards
             ], [
                 0.8, 0.1, 0, 0.1 //move probabilities
-            ], ctxs[1]
+            ], ctxs[worlds.length]
         ));
         learners.push(
             new Reign(
                 worlds[1].initPos, worlds[1].actions, worlds[1].transition,
                 worlds[1].reward, worlds[1].drawWorld //the 'every'
+            )
+        );
+        worlds.push(new GridWorld([
+[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+[1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,3,1],
+[1,0,1,0,1,1,1,0,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,0,1,0,1,0,1],
+[1,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,1],
+[1,0,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,0,1,1,1,1,1,0,1,0,1,0,1,0,1],
+[1,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0,1,0,1,0,0,0,1],
+[1,1,1,1,1,0,1,0,1,0,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,0,1,0,1],
+[1,0,1,0,0,0,1,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,1],
+[1,0,1,1,1,1,1,0,1,0,1,0,1,1,1,0,1,0,1,0,1,1,1,0,1,1,1,0,1,1,1],
+[1,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,1,0,1,0,1,0,0,0,0,0,1],
+[1,1,1,0,1,0,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1],
+[1,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,1],
+[1,0,1,0,1,0,1,1,1,1,1,0,1,0,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1],
+[1,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+[1,0,1,0,1,0,1,0,1,1,1,0,1,1,1,1,1,0,1,0,1,0,1,1,1,0,1,1,1,0,1],
+[1,2,1,0,1,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,1],
+[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+            ], [8, 15], [
+                -0.01, 0, 1, -1 //rewards
+            ], [
+                0.95, 0.025, 0, 0.025 //move probabilities
+            ], ctxs[worlds.length]
+        ));
+        learners.push(
+            new Reign(
+                worlds[2].initPos, worlds[2].actions, worlds[2].transition,
+                worlds[2].reward, worlds[2].drawWorld //the 'every'
             )
         );
         worlds.push(new PlaneWorld([
@@ -97,12 +127,12 @@ var ReinforcementLearner = (function() {
                 -0.01, 0, 1, -1 //rewards
             ], [
                 0.05, 0.01, 0.1 //move parameters
-            ], ctxs[2]
+            ], ctxs[worlds.length]
         ));
         learners.push(
             new Reign(
-                worlds[2].initPos, worlds[2].actions, worlds[2].transition,
-                worlds[2].reward, worlds[2].drawWorld //the 'every'
+                worlds[3].initPos, worlds[3].actions, worlds[3].transition,
+                worlds[3].reward, worlds[3].drawWorld //the 'every'
             )
         );
 
@@ -486,10 +516,19 @@ var ReinforcementLearner = (function() {
                 var rx = feature[2]*self.ctx.canvas.width;
                 var ry = feature[2]*self.ctx.canvas.height;
                 self.ctx.fillStyle = self.TERRAIN_COLS[type];
+                self.ctx.strokeStyle = self.TERRAIN_COLS[1];
                 self.ctx.beginPath();
                 self.ctx.ellipse(x, y, rx, ry, 0, 0, 2*Math.PI);
                 self.ctx.fill();
+                self.ctx.stroke();
             });
+
+            //draw a border around the world
+            self.ctx.fillStyle = '#101010';
+            self.ctx.fillRect(0, 0, self.ctx.canvas.width, 1);
+            self.ctx.fillRect(0, self.ctx.canvas.height-1, self.ctx.canvas.width, 1);
+            self.ctx.fillRect(0, 0, 1, self.ctx.canvas.height);
+            self.ctx.fillRect(self.ctx.canvas.width-1, 0, 1, self.ctx.canvas.height);
         };
 
         //helpers
