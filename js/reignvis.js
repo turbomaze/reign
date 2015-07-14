@@ -38,16 +38,34 @@ var ReinforcementLearner = (function() {
 
         //event listeners
         for (var ai = 0; ai < NUM_EX; ai++) {
+            $s('#act-once-'+ai+'-btn').addEventListener('click', (function(i) {
+                return function() {
+                    learners[i].act();
+                };
+            })(ai));
+            $s('#act-once-'+ai+'-btn').addEventListener(
+                    'mousedown', function(e) {
+                    e.preventDefault();
+                }, false
+            );
             $s('#run-'+ai+'-5-btn').addEventListener('click', (function(idx) {
                 return function() {
                     learnNTimes(idx, 5);
                 };
             })(ai));
+            $s('#run-'+ai+'-5-btn').addEventListener('mousedown', function(e) {
+                e.preventDefault();
+            }, false);
             $s('#run-'+ai+'-100-btn').addEventListener('click', (function(idx) {
                 return function() {
                     learnNTimes(idx, 100, 21);
                 };
             })(ai));
+            $s('#run-'+ai+'-100-btn').addEventListener(
+                'mousedown', function(e) {
+                    e.preventDefault();
+                }, false
+            );
         }
 
         //reinforcement learning stuff
@@ -106,7 +124,7 @@ var ReinforcementLearner = (function() {
 [1,2,1,0,1,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,1],
 [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
             ], [8, 15], [
-                -0.01, 0, 1, -1 //rewards
+                -0.016, 0, 1, -1 //rewards
             ], [
                 0.95, 0.025, 0, 0.025 //move probabilities
             ], ctxs[worlds.length]
@@ -118,15 +136,15 @@ var ReinforcementLearner = (function() {
             )
         );
         worlds.push(new PlaneWorld([
-                [1, [0.2, 0.3], 0.15],
                 [1, [0.7, 0.5], 0.1],
                 [1, [0.3, 0.75], 0.18],
                 [2, [0.8, 0.8], 0.1],
+                [3, [0.2, 0.3], 0.15],
                 [3, [0.6, 0.85], 0.1]
             ], [0.5, 0.5], [
-                -0.31, 0, 1, -1 //rewards
+                -0.25, 0, 4, -4 //rewards
             ], [
-                0.05, 0.01, 0.1 //move parameters
+                0.05, 0.01, 0.05 //move parameters
             ], ctxs[worlds.length]
         ));
         learners.push(
@@ -294,7 +312,7 @@ var ReinforcementLearner = (function() {
                             Crush.getGradient(
                                 qVal > 0 ? highColor : lowColor,
                                 neutralColor,
-                                lerp(Math.abs(qVal), [0, 1], [0, 1])
+                                lerpb(Math.abs(qVal), [0, 1], [0, 1])
                             ), 1
                         );
                     }
@@ -351,12 +369,23 @@ var ReinforcementLearner = (function() {
                 }
             }
             return set[0][0]; //unexpected error; return first one
-        };
+        }
 
         function lerp(n, r, o) {
             var k = (n-r[0])/(r[1]-r[0]);
             return o[0]+(o[1]-o[0])*k;
-        };
+        }
+
+        function lerpb(n, r, o) {
+            var k = (n-r[0])/(r[1]-r[0]);
+            return Math.min(
+                Math.max(
+                    o[0]+(o[1]-o[0])*k,
+                    Math.min(o[0], o[1])
+                ),
+                Math.max(o[0], o[1])
+            );
+        }
     }
 
     /* PlaneWorld
@@ -472,29 +501,34 @@ var ReinforcementLearner = (function() {
         };
         this.paintGrid = function(q) {
             //paint the q values
-            var resolution = 20; //resolution of the q value painting
+            var resolution = 6; //resolution of the q value painting
             for (var y = 0; y < 1; y+=1/resolution) {
                 for (var x = 0; x < 1; x+=1/resolution) {
                     //get the best q value for this spot's center
                     var centerX = x + 0.5/resolution;
                     var centerY = y + 0.5/resolution;
-                    var bestQ = self.actions.reduce(function(best, a) {
+                    /*var qValToColor = self.actions.reduce(function(best, a) {
                         var option = q([centerX, centerY], a);
                         if (best === false) return option;
                         else return best > option ? best : option;
-                    }, false);
+                    }, false);*/
+                    //average q value
+                    var qSum = self.actions.reduce(function(acc, action) {
+                        return acc + q([centerX, centerY], action);
+                    }, 0);
+                    var qValToColor = qSum/self.actions.length;
 
                     //get a color
                     var highColor = [131, 227, 120];
                     var neutralColor = [239, 239, 239];
                     var lowColor = [237, 124, 111];
                     var qColor = Crush.getColorStr(neutralColor, 0);
-                    if (bestQ !== 0) {
+                    if (qValToColor !== 0) {
                         qColor = Crush.getColorStr(
                             Crush.getGradient(
-                                bestQ > 0 ? highColor : lowColor,
+                                qValToColor > 0 ? highColor : lowColor,
                                 neutralColor,
-                                lerp(Math.abs(bestQ), [0, 1], [0, 1])
+                                lerp(Math.abs(qValToColor), [0, 1], [0, 1])
                             ), 1
                         );
                     }
@@ -542,12 +576,23 @@ var ReinforcementLearner = (function() {
             }
             var k = Math.sqrt((-2*Math.log(dist))/dist);
             return [k*x1*sig1 + mu1, k*x2*sig2 + mu2];
-        };
+        }
 
         function lerp(n, r, o) {
             var k = (n-r[0])/(r[1]-r[0]);
             return o[0]+(o[1]-o[0])*k;
-        };
+        }
+
+        function lerpb(n, r, o) {
+            var k = (n-r[0])/(r[1]-r[0]);
+            return Math.min(
+                Math.max(
+                    o[0]+(o[1]-o[0])*k,
+                    Math.min(o[0], o[1])
+                ),
+                Math.max(o[0], o[1])
+            );
+        }
     }
 
     /********************

@@ -19,6 +19,7 @@ var Reign = (function() {
     var GAMMA = 1; //" " future rewards are
     var INIT_EPS = 0.5; //chance of choosing a random action initially
     var EPS_DECAY = 0.997; //how quickly epsilon decays
+    var DO_Q_EST = true; //perform q value estimation
 
     /***********
      * objects */
@@ -304,6 +305,8 @@ var Reign = (function() {
             );
         };
         this.act = function() {
+            if (this.state[0] === false) this.state = this.initState.slice(0);
+
             var action = this.chooseAction(this.state)[0];
             return this.takeAction(action); //the reward
         };
@@ -324,7 +327,7 @@ var Reign = (function() {
             //increment the time
             this.t += 1;
             //call the every function
-            this.every(this.state, a, reward, this.q);
+            this.every(this.state, a, reward, this.q.bind(this));
 
             return reward;
         };
@@ -371,18 +374,43 @@ var Reign = (function() {
                 var vals = qContainer.access(state);
                 if (vals !== false && vals[action] !== false) {
                     return vals[action];
+                } else if (!DO_Q_EST) {
+                    return 0; //return a default q value
                 } else {
                     //perform q value estimation here
                     var neighbors = qContainer.getAllWithinROf(
                         state,
                         [0.15, 0.15]
                     );
-                    var relNeighbors = neighbors.filter(function(pair) {
-                        return pair[1][action] !== false;
-                    });
-                    var avgQVal = relNeighbors.reduce(function(acc, pair) {
-                        return acc + (1/relNeighbors.length)*pair[1][action];
-                    }, 0);
+                    var avgQVal = 0;
+                    if (this.actions.length >= 6) {
+                        //adjacent actions are a proxy to action similarity
+                        var numSamples = 0;
+                        var qSum = 0;
+                        for (var ai = -1; ai < 1; ai++) {
+                            var action_ = this.actions.length+ai+action;
+                            action_ = action_%this.actions.length;
+                            var relNeighbors = neighbors.filter(
+                                function(pair, idx) {
+                                    return pair[1][action_] !==false && idx<10;
+                                }
+                            );
+                            numSamples += relNeighbors.length;
+                            qSum += relNeighbors.reduce(function(acc, pair) {
+                                return acc+pair[1][action];
+                            }, 0);
+                        }
+                        avgQVal = qSum/Math.max(numSamples, 1);
+                    } else {
+                        var relNeighbors = neighbors.filter(
+                            function(pair, idx) {
+                                return pair[1][action] !== false && idx < 10;
+                            }
+                        );
+                        avgQVal = relNeighbors.reduce(function(acc, pair) {
+                            return acc+(1/relNeighbors.length)*pair[1][action];
+                        }, 0);
+                    }
                     return avgQVal; //...or return a default value
                 }
             }
