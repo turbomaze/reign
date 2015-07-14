@@ -124,7 +124,7 @@ var ReinforcementLearner = (function() {
                 [2, [0.8, 0.8], 0.1],
                 [3, [0.6, 0.85], 0.1]
             ], [0.5, 0.5], [
-                -0.01, 0, 1, -1 //rewards
+                -0.31, 0, 1, -1 //rewards
             ], [
                 0.05, 0.01, 0.1 //move parameters
             ], ctxs[worlds.length]
@@ -234,7 +234,7 @@ var ReinforcementLearner = (function() {
                 trsns.push([s.slice(0), unusedProb]); //remain in the same state
 
                 //return a random selection
-                return self.chooseRandomly(trsns);
+                return chooseRandomly(trsns);
             }
         };
 
@@ -294,7 +294,7 @@ var ReinforcementLearner = (function() {
                             Crush.getGradient(
                                 qVal > 0 ? highColor : lowColor,
                                 neutralColor,
-                                self.lerp(Math.abs(qVal), [0, 1], [0, 1])
+                                lerp(Math.abs(qVal), [0, 1], [0, 1])
                             ), 1
                         );
                     }
@@ -331,7 +331,7 @@ var ReinforcementLearner = (function() {
         };
 
         //helpers
-        this.chooseRandomly = function(set) {
+        function chooseRandomly(set) {
             //given a set of object-weight pairs, choose a random object
             //according to its corresponding weight (which is its probabilty if
             //the weights are normalized)
@@ -352,7 +352,8 @@ var ReinforcementLearner = (function() {
             }
             return set[0][0]; //unexpected error; return first one
         };
-        this.lerp = function(n, r, o) {
+
+        function lerp(n, r, o) {
             var k = (n-r[0])/(r[1]-r[0]);
             return o[0]+(o[1]-o[0])*k;
         };
@@ -493,7 +494,7 @@ var ReinforcementLearner = (function() {
                             Crush.getGradient(
                                 bestQ > 0 ? highColor : lowColor,
                                 neutralColor,
-                                self.lerp(Math.abs(bestQ), [0, 1], [0, 1])
+                                lerp(Math.abs(bestQ), [0, 1], [0, 1])
                             ), 1
                         );
                     }
@@ -541,6 +542,11 @@ var ReinforcementLearner = (function() {
             }
             var k = Math.sqrt((-2*Math.log(dist))/dist);
             return [k*x1*sig1 + mu1, k*x2*sig2 + mu2];
+        };
+
+        function lerp(n, r, o) {
+            var k = (n-r[0])/(r[1]-r[0]);
+            return o[0]+(o[1]-o[0])*k;
         };
     }
 
