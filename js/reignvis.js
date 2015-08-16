@@ -289,7 +289,11 @@ var ReinforcementLearner = (function() {
             );
         };
         this.paintGrid = function(q) {
-            function drawQs(state) {
+            //colors
+            var highColor = [131, 227, 120];
+            var neutralColor = [239, 239, 239];
+            var lowColor = [237, 124, 111];
+            function drawQs(state, low, mid, high) {
                 //prepare the relevant points
                 var center = [
                     (state[1]+0.5)*self.TILE_WD,
@@ -302,24 +306,16 @@ var ReinforcementLearner = (function() {
                     [center[0]-0.5*self.TILE_WD, center[1]+0.5*self.TILE_HT]
                 ];
 
-                //colors
-                var highColor = [131, 227, 120];
-                var neutralColor = [239, 239, 239];
-                var lowColor = [237, 124, 111];
-
                 //draw the quadrants
                 self.actions.map(function(a, idx) {
                     var qVal = q(state, a);
-                    var qColor = Crush.getColorStr(neutralColor, 0);
-                    if (qVal !== 0) {
-                        qColor = Crush.getColorStr(
-                            Crush.getGradient(
-                                qVal > 0 ? highColor : lowColor,
-                                neutralColor,
-                                lerpb(Math.abs(qVal), [0, 1], [0, 1])
-                            ), 1
-                        );
-                    }
+                    var qColor = Crush.getColorStr(
+                        Crush.getGradient(
+                            qVal > mid ? highColor : lowColor,
+                            neutralColor,
+                            lerpb(qVal, [mid, qVal>mid?high:low], [0, 1])
+                        ), 1
+                    );
                     Crush.drawTriangle(
                         self.ctx,
                         [center, corners[idx], corners[(idx+1)%4]],
@@ -327,6 +323,25 @@ var ReinforcementLearner = (function() {
                     );
                 });
             }
+
+            //get the q range
+            var qVals = [];
+            for (var ai = 0; ai < self.grid.length; ai++) {
+                for (var bi = 0; bi < self.grid[0].length; bi++) {
+                    var tileType = self.grid[ai][bi];
+                    if (tileType === 0) {
+                        self.actions.map(function(a) {
+                            qVals.push(q([ai, bi], a));
+                        });
+                    }
+                }
+            }
+            qVals.sort(function(a, b) {
+                return a - b;
+            });
+            var lowQ = qVals[0] || -1;
+            var midQ = qVals[Math.floor(qVals.length/2)] || 0;
+            var highQ = qVals[qVals.length-1] || 1;
 
             //color cells
             for (var ai = 0; ai < self.grid.length; ai++) {
@@ -336,7 +351,7 @@ var ReinforcementLearner = (function() {
                     self.ctx.fillStyle = self.TILE_COLS[self.grid[ai][bi]];
                     self.ctx.fillRect(xOff, yOff, self.TILE_WD, self.TILE_HT);
                     var tileType = self.grid[ai][bi];
-                    if (tileType === 0) drawQs([ai, bi]);
+                    if (tileType === 0) drawQs([ai, bi], lowQ, midQ, highQ);
                 }
             }
 
@@ -504,38 +519,54 @@ var ReinforcementLearner = (function() {
             );
         };
         this.paintGrid = function(q) {
-            //paint the q values
+            //get the q val statistics
+            var qVals = [];
             var resolution = 6; //resolution of the q value painting
             for (var y = 0; y < 1; y+=1/resolution) {
                 for (var x = 0; x < 1; x+=1/resolution) {
-                    //get the best q value for this spot's center
+                    //get the avg q value for this spot's center
                     var centerX = x + 0.5/resolution;
                     var centerY = y + 0.5/resolution;
-                    /*var qValToColor = self.actions.reduce(function(best, a) {
-                        var option = q([centerX, centerY], a);
-                        if (best === false) return option;
-                        else return best > option ? best : option;
-                    }, false);*/
                     //average q value
                     var qSum = self.actions.reduce(function(acc, action) {
                         return acc + q([centerX, centerY], action);
                     }, 0);
-                    var qValToColor = qSum/self.actions.length;
+                    var qVal = qSum/self.actions.length;
+                    qVals.push(qVal);
+                }
+            }
+            qVals.sort(function(a, b) {
+                return a - b;
+            });
+            var loQ = qVals[0] || -1;
+            var midQ = qVals[Math.floor(qVals.length/2)] || 0;
+            var hiQ = qVals[qVals.length-1] || 1;
+
+            //paint the q values
+            var highColor = [131, 227, 120];
+            var neutralColor = [239, 239, 239];
+            var lowColor = [237, 124, 111];
+            for (var y = 0; y < 1; y+=1/resolution) {
+                for (var x = 0; x < 1; x+=1/resolution) {
+                    //get the avg q value for this spot's center
+                    var centerX = x + 0.5/resolution;
+                    var centerY = y + 0.5/resolution;
+                    //average q value
+                    var qSum = self.actions.reduce(function(acc, action) {
+                        return acc + q([centerX, centerY], action);
+                    }, 0);
+                    var qValToCol = qSum/self.actions.length;
 
                     //get a color
-                    var highColor = [131, 227, 120];
-                    var neutralColor = [239, 239, 239];
-                    var lowColor = [237, 124, 111];
-                    var qColor = Crush.getColorStr(neutralColor, 0);
-                    if (qValToColor !== 0) {
-                        qColor = Crush.getColorStr(
-                            Crush.getGradient(
-                                qValToColor > 0 ? highColor : lowColor,
-                                neutralColor,
-                                lerp(Math.abs(qValToColor), [0, 1], [0, 1])
-                            ), 1
-                        );
-                    }
+                    var qColor = Crush.getColorStr(
+                        Crush.getGradient(
+                            qValToCol > midQ ? highColor : lowColor,
+                            neutralColor,
+                            lerpb(qValToCol, [
+                                midQ, qValToCol > midQ ? hiQ : loQ
+                            ], [0, 1])
+                        ), 1
+                    );
 
                     //color this local box the average q value
                     var cornerX = x*self.ctx.canvas.width;
