@@ -82,6 +82,7 @@ var ReinforcementLearner = (function() {
         ));
         learners.push(
             new Reign(
+                [[0, worlds[0].grid.length], [0, worlds[0].grid[0].length]],
                 worlds[0].initPos, worlds[0].actions, worlds[0].transition,
                 worlds[0].reward, worlds[0].drawWorld //the 'every'
             )
@@ -101,6 +102,7 @@ var ReinforcementLearner = (function() {
         ));
         learners.push(
             new Reign(
+                [[0, worlds[1].grid.length], [0, worlds[1].grid[0].length]],
                 worlds[1].initPos, worlds[1].actions, worlds[1].transition,
                 worlds[1].reward, worlds[1].drawWorld //the 'every'
             )
@@ -131,6 +133,7 @@ var ReinforcementLearner = (function() {
         ));
         learners.push(
             new Reign(
+                [[0, worlds[2].grid.length], [0, worlds[2].grid[0].length]],
                 worlds[2].initPos, worlds[2].actions, worlds[2].transition,
                 worlds[2].reward, worlds[2].drawWorld //the 'every'
             )
@@ -149,6 +152,7 @@ var ReinforcementLearner = (function() {
         ));
         learners.push(
             new Reign(
+                [[0, 1], [0, 1]],
                 worlds[3].initPos, worlds[3].actions, worlds[3].transition,
                 worlds[3].reward, worlds[3].drawWorld //the 'every'
             )

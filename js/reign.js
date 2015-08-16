@@ -15,199 +15,19 @@ var Reign = (function() {
 
     /*************
      * constants */
-    var ALPHA = 0.5; //the higher this is, the more important new q's are
-    var GAMMA = 1; //" " future rewards are
+    var ALPHA = 0.9; //the higher this is, the more important q's are than r's
+    var ETA = 0.02; //weight learning step size
     var INIT_EPS = 0.5; //chance of choosing a random action initially
     var EPS_DECAY = 0.997; //how quickly epsilon decays
-    var DO_Q_EST = true; //perform q value estimation
 
     /***********
      * objects */
-    function SemiSortedArray(points) {
-        var self = this;
-        points = points || [];
-
-        //the points in this data structure
-        this.points = points.map(function(point) {
-            return point.slice(0);
-        }).sort(arrayCmp);
-
-        this.getAllWithinROf = function(point, rs) {
-            var leftBound = this.getIdxFirstGreaterThan(point[0]-rs[0]);
-            var rightBound = this.getIdxFirstLessThan(point[0]+rs[0]);
-            if (leftBound === -1 || rightBound === -1) return [];
-
-            //now find the points!!
-            var ret = [];
-            for (var xi = leftBound; xi <= rightBound; xi++) {
-                ret.push(this.points[xi]);
-            }
-            return ret.filter(function(p1) {
-                return withinROf(point, p1[0], rs);
-            });
-        };
-        this.upsert = function(point, val) {
-            var idxs = this.getIdxInArr(point);
-            if (idxs[0] === false) {
-                this.points.splice(idxs[1], 0, [point, val]); //insert
-            } else {
-                this.points[idxs[0]][1] = val; //update
-            }
-        };
-        this.access = function(point) {
-            var idxs = this.getIdxInArr(point);
-            if (idxs[0] === false) {
-                return false;
-            } else {
-                return this.points[idxs[0]][1];
-            }
-        };
-        this.getIdxInArr = function(point) { //by all coords
-            var minIdx = 0; //inclusive
-            var maxIdx = this.points.length; //exclusive
-            var idxInArr = false;
-            while (
-                minIdx !== maxIdx &&
-                minIdx < this.points.length //not gonna happen in here
-            ) {
-                var idx = Math.floor((minIdx+maxIdx)/2);
-                var cmp = arrayCmp(this.points[idx][0], point);
-                if (cmp === 0) {
-                    idxInArr = idx;
-                    break;
-                } else if (cmp < 0) {
-                    minIdx = idx+1;
-                } else {
-                    maxIdx = idx;
-                }
-            }
-
-            return [idxInArr, minIdx, maxIdx];
-        };
-        this.getRoughIdxInArr = function(val) { //by first coord
-            var minIdx = 0; //inclusive
-            var maxIdx = this.points.length; //exclusive
-            var idxInArr = false;
-            while (
-                minIdx !== maxIdx &&
-                minIdx < this.points.length //not gonna happen in here
-            ) {
-                var idx = Math.floor((minIdx+maxIdx)/2);
-                var cmp = this.points[idx][0][0] - val;
-                if (cmp === 0) {
-                    idxInArr = idx;
-                    break;
-                } else if (cmp < 0) {
-                    minIdx = idx+1;
-                } else {
-                    maxIdx = idx;
-                }
-            }
-
-            return [idxInArr, minIdx, maxIdx];
-        };
-        this.getIdxFirstLessThan = function(val) {
-            if (this.points.length === 0) return -1;
-
-            //val is the first element or it's beyond the last
-            if (this.points[0][0][0] === val) return -1;
-            else if (val > this.points[this.points.length-1][0][0]) {
-                return this.points.length-1;
-            }
-
-            //first, use binary search to find the element
-            var idxs = this.getRoughIdxInArr(val);
-
-            //if the element wasn't actually found
-            if (idxs[0] === false) {
-                //then it stopped because minIdx === maxIdx
-                if (this.points[idxs[1]][0][0] > val) {
-                    return idxs[1] - 1;
-                } else return idxs[1];
-            } else {
-                //it was found, gotta do more steps!
-                var newMax = idxs[0];
-                while (this.points[idxs[1]][0][0] < val) {
-                    var idx2 = Math.floor((idxs[1]+newMax)/2);
-                    var cmp = this.points[idx2][0][0] - val;
-                    if (cmp === 0) {
-                        newMax = idx2;
-                    } else if (cmp < 0) {
-                        idxs[1] = idx2+1;
-                    } else {
-                        newMax = idx2;
-                    }
-                }
-                return idxs[1]-1;
-            }
-        };
-        this.getIdxFirstGreaterThan = function(val) {
-            if (this.points.length === 0) return -1;
-
-            //val is >= the last element or it's before the first
-            if (val >= this.points[this.points.length-1][0][0]) {
-                return -1;
-            } else if (val < this.points[0][0][0]) {
-                return 0;
-            }
-
-            //first, use binary search to find the element
-            var idxs = this.getRoughIdxInArr(val);
-
-            //if the element wasn't actually found
-            if (idxs[0] === false) {
-                //then it stopped because minIdx === maxIdx
-                if (this.points[idxs[1]][0][0] > val) {
-                    return idxs[1];
-                } else return idxs[1]+1;
-            } else {
-                //it was found, gotta do more steps!
-                var newMin = idxs[0];
-                while (newMin !== idxs[2]) {
-                    var idx2 = Math.floor((newMin+idxs[2])/2);
-                    var cmp = this.points[idx2][0][0] - val;
-                    if (cmp === 0) {
-                        newMin = idx2+1;
-                    } else if (cmp > 0) {
-                        idxs[2] = idx2;
-                    } else {
-                        newMin = idx2+1;
-                    }
-                }
-                return idxs[2];
-            }
-        };
-
-        function withinROf(p1, p2, rs) {
-            //ai === 0 should have already been checked
-            for (var ai = 1; ai < p1.length; ai++) {
-                if (Math.abs(p1[ai] - p2[ai]) >= rs[ai]) return false;
-            }
-            return true;
-        }
-
-        //arrayCmp returns -> 0: equal, 1: arr1 > arr2, -1: arr1 < arr2
-        function arrayCmp(arr1, arr2) {
-            //diff length, shorter is worth more
-            if (arr1.length !== arr2.length) {
-                return arr1.length < arr2.length ? 1 : -1;
-            }
-
-            //same length, go element by element
-            for (var ai = 0; ai < arr1.length; ai++) {
-                //earlier elements are worth more
-                if (arr1[ai] !== arr2[ai]) {
-                    return arr1[ai] > arr2[ai] ? 1 : -1;
-                }
-            }
-
-            return 0; //they're the same
-        }
-    }
 
     /******************
      * work functions */
-    return function(initState, actions, transition, reward, every) {
+    return function(
+        stateRanges, initState, actions, transition, reward, every
+    ) {
         //constants
         this.initState = initState.slice(0); //state to restart in after exit
         this.actions = actions.slice(0); //the actions available
@@ -219,9 +39,21 @@ var Reign = (function() {
         this.state = this.initState.slice(0);
         this.t = 0;
         this.eps = INIT_EPS;
-
-        //private variables
-        var qContainer = new SemiSortedArray();
+        this.sp = new Uition.SP({
+            numCols: 100,
+            sparsity: 0.07,
+            minOverlap: 4,
+            encoder: 'vector',
+            encoderCfg: {
+                n: 120,
+                w: 0.4,
+                rngs: stateRanges.concat([
+                    [this.actions[0], this.actions[this.actions.length-1]]
+                ])
+            }
+        });
+        this.w = [];
+        for (var wi = 0; wi < this.sp.cfg.numCols; wi++) this.w.push(0);
 
         //methods
         this.exitNTimes = function(n, msPerAction, each, end, idx, totalRwd) {
@@ -320,8 +152,11 @@ var Reign = (function() {
             //update the state-action pair's q value
             var qOld = this.q(prevState, a);
             var nextQMax = this.chooseAction(this.state)[1];
-            var qNew = (1-ALPHA)*qOld + ALPHA*(reward + GAMMA*nextQMax);
-            this.q(prevState, a, qNew);
+            var delta = reward + ALPHA*(nextQMax - qOld);
+            var activeFeatures = this.sp.process(prevState.concat([a]), true);
+            for (var fi = 0; fi < activeFeatures.length; fi++) {
+                this.w[activeFeatures[fi]] += ETA*delta;
+            }
             //update epsilon
             this.eps *= EPS_DECAY;
             //increment the time
@@ -358,66 +193,13 @@ var Reign = (function() {
                 return bestActions[randIdx];
             }
         };
-        this.q = function(state, action, val) { //makes the syntax easier
-            if (arguments.length === 3) {
-                //upsert this q value
-                var vals = qContainer.access(state);
-                if (vals === false) { //not there whatsoever
-                    vals = this.actions.map(function() {
-                        return false; //one per action
-                    });
-                }
-                vals[action] = val;
-                qContainer.upsert(state, vals);
-            } else {
-                //return this q value
-                var vals = qContainer.access(state);
-                if (vals !== false && vals[action] !== false) {
-                    return vals[action];
-                } else if (!DO_Q_EST) {
-                    return 0; //return a default q value
-                } else {
-                    //perform q value estimation here
-                    var neighbors = qContainer.getAllWithinROf(
-                        state,
-                        [0.15, 0.15]
-                    );
-                    var avgQVal = 0;
-                    if (this.actions.length >= 6) {
-                        //adjacent actions are a proxy to action similarity
-                        var numSamples = 0;
-                        var qSum = 0;
-                        for (var ai = -1; ai < 1; ai++) {
-                            var action_ = this.actions.length+ai+action;
-                            action_ = action_%this.actions.length;
-                            var relNeighbors = neighbors.filter(
-                                function(pair, idx) {
-                                    return pair[1][action_] !==false && idx<10;
-                                }
-                            );
-                            numSamples += relNeighbors.length;
-                            qSum += relNeighbors.reduce(function(acc, pair) {
-                                return acc+pair[1][action];
-                            }, 0);
-                        }
-                        avgQVal = qSum/Math.max(numSamples, 1);
-                    } else {
-                        var relNeighbors = neighbors.filter(
-                            function(pair, idx) {
-                                return pair[1][action] !== false && idx < 10;
-                            }
-                        );
-                        avgQVal = relNeighbors.reduce(function(acc, pair) {
-                            return acc+(1/relNeighbors.length)*pair[1][action];
-                        }, 0);
-                    }
-                    return avgQVal; //...or return a default value
-                }
+        this.q = function(state, action) { //makes the syntax easier
+            var activeFeatures = this.sp.process(state.concat([action]));
+            var total = 0;
+            for (var fi = 0; fi < activeFeatures.length; fi++) {
+                total += this.w[activeFeatures[fi]];
             }
-        };
-        this.getQVals = function() {
-            //this will only ever be called for debugging purposes
-            return JSON.parse(JSON.stringify(qContainer.points)); //deep copy
+            return total;
         };
     }
 })();
