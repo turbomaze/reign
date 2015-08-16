@@ -15,8 +15,8 @@ var Reign = (function() {
 
     /*************
      * constants */
-    var ALPHA = 0.9; //the higher this is, the more important q's are than r's
-    var ETA = 0.02; //weight learning step size
+    var ALPHA = 0.03; //weight learning rate
+    var GAMMA = 1; //how important future q's are
     var INIT_EPS = 0.5; //chance of choosing a random action initially
     var EPS_DECAY = 0.997; //how quickly epsilon decays
 
@@ -52,8 +52,13 @@ var Reign = (function() {
                 ])
             }
         });
-        this.w = [];
-        for (var wi = 0; wi < this.sp.cfg.numCols; wi++) this.w.push(0);
+        this.w = []; //feature weights
+        this.hist = []; //count of column activations
+        for (var wi = 0; wi < this.sp.cfg.numCols; wi++) {
+            this.w.push(0);
+            this.hist.push(0);
+        }
+        this.w.push(0); //bias
 
         //methods
         this.exitNTimes = function(n, msPerAction, each, end, idx, totalRwd) {
@@ -149,13 +154,18 @@ var Reign = (function() {
             this.state = this.transition(this.state, a);
             //get the reward for this transition
             var reward = this.reward(this.state, prevState, a);
-            //update the state-action pair's q value
-            var qOld = this.q(prevState, a);
-            var nextQMax = this.chooseAction(this.state)[1];
-            var delta = reward + ALPHA*(nextQMax - qOld);
+            //log this activity
             var activeFeatures = this.sp.process(prevState.concat([a]), true);
             for (var fi = 0; fi < activeFeatures.length; fi++) {
-                this.w[activeFeatures[fi]] += ETA*delta;
+                this.hist[activeFeatures[fi]] += 1;
+            }
+            //update the weights
+            var qOld = this.q(prevState, a);
+            var nextQMax = this.chooseAction(this.state)[1];
+            var delta = reward + GAMMA*nextQMax - qOld;
+            activeFeatures.push(this.w.length-1); //last one is bias
+            for (var fi = 0; fi < activeFeatures.length; fi++) {
+                this.w[activeFeatures[fi]] += ALPHA*delta;
             }
             //update epsilon
             this.eps *= EPS_DECAY;
@@ -175,19 +185,38 @@ var Reign = (function() {
                 return [randAction, this.q(state, randAction)];
             } else {
                 var actionQVals = this.actions.map(function(action) {
-                    //array of this state's action-q-value pairs
-                    return [action, self.q(state, action)];
+                    //max exploration boost
+                    var k = 100;
+                    //get this pair's features
+                    var activeFeatures = self.sp.process(
+                        state.concat([action])
+                    );
+                    //calculate how often it has been visited for boosting
+                    var activity = 1;
+                    for (var fi = 0; fi < activeFeatures.length; fi++) {
+                        activity += self.hist[activeFeatures[fi]];
+                    }
+                    activity /= activeFeatures.length;
+                    var qBoost = k/Math.pow(activity, 0.5);
+                    //compute the unchanged q value
+                    activeFeatures.push(self.w.length-1); //last one is bias
+                    var rawQ = 0;
+                    for (var fi = 0; fi < activeFeatures.length; fi++) {
+                        rawQ += self.w[activeFeatures[fi]];
+                    }
+                    //return the pair with the boosted value
+                    return [action, rawQ, rawQ+qBoost];
                 });
-                var bestPair = actionQVals.reduce(function(ret, option) {
+                var bestPair = actionQVals.reduce(function(ret, option, idx) {
                     //return the pair with the highest q-value
-                    if (ret === false || option[1] > ret[1]) {
+                    if (ret === false || option[2] > ret[2]) {
                         return option; //this pair's q is better
                     } else {
                         return ret; //old one was fine
                     }
                 }, false);
                 var bestActions = actionQVals.filter(function(pair) {
-                    return pair[1] === bestPair[1];
+                    return pair[2] === bestPair[2];
                 });
                 var randIdx = Math.floor(bestActions.length*Math.random());
                 return bestActions[randIdx];
@@ -195,6 +224,7 @@ var Reign = (function() {
         };
         this.q = function(state, action) { //makes the syntax easier
             var activeFeatures = this.sp.process(state.concat([action]));
+            activeFeatures.push(this.w.length-1); //last one is bias
             var total = 0;
             for (var fi = 0; fi < activeFeatures.length; fi++) {
                 total += this.w[activeFeatures[fi]];
